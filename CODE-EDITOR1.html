@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SKEditor - Mobile Code Editor</title>
+    <!-- Ace Editor CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js" type="text/javascript" charset="utf-8"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Reset & Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Header Styles */
+        header {
+            background-color: #333333;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            z-index: 100;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #4dabf7;
+        }
+        
+        .logo i {
+            font-size: 1.6rem;
+        }
+        
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        select, .header-btn {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        select {
+            background-color: #2d2d2d;
+            color: #e0e0e0;
+            min-width: 120px;
+        }
+        
+        .header-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background-color: #444;
+            color: white;
+        }
+        
+        .header-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        
+        .save-btn {
+            background-color: #1971c2;
+        }
+        
+        .open-btn {
+            background-color: #e67700;
+        }
+        
+        .run-btn {
+            background-color: #2b8a3e;
+        }
+        
+        .btn-text {
+            display: inline;
+        }
+        
+        /* Editor Container */
+        .editor-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            min-height: 0;
+        }
+        
+        #editor {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            font-size: 16px;
+        }
+        
+        /* Bottom Toolbar */
+        .toolbar {
+            background-color: #252525;
+            padding: 10px;
+            flex-shrink: 0;
+            border-top: 1px solid #444;
+            position: relative;
+            z-index: 50;
+        }
+        
+        .toolbar-scroll {
+            display: flex;
+            overflow-x: auto;
+            gap: 8px;
+            padding-bottom: 4px;
+        }
+        
+        .toolbar-scroll::-webkit-scrollbar {
+            height: 6px;
+        }
+        
+        .toolbar-scroll::-webkit-scrollbar-track {
+            background: #333;
+            border-radius: 3px;
+        }
+        
+        .toolbar-scroll::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 3px;
+        }
+        
+        .tool-btn {
+            min-width: 40px;
+            min-height: 40px;
+            padding: 8px 12px;
+            background-color: #3a3a3a;
+            border: 1px solid #555;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        
+        .tool-btn:hover {
+            background-color: #4a4a4a;
+        }
+        
+        .tool-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* Overlay for Preview */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+        }
+        
+        .overlay.active {
+            display: flex;
+        }
+        
+        .overlay-header {
+            background-color: #333;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        
+        .overlay-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .close-overlay {
+            background-color: #555;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .overlay-content {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #preview-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        .code-output {
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+            height: 100%;
+            overflow: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .code-output pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background-color: #2d2d2d;
+            padding: 25px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #e0e0e0;
+            text-align: center;
+        }
+        
+        .modal-input {
+            width: 100%;
+            padding: 12px 15px;
+            background-color: #3a3a3a;
+            border: 2px solid #555;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+        
+        .modal-input:focus {
+            outline: none;
+            border-color: #4dabf7;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        
+        .modal-btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        
+        .modal-cancel {
+            background-color: #555;
+            color: white;
+        }
+        
+        .modal-confirm {
+            background-color: #1971c2;
+            color: white;
+        }
+        
+        /* Responsive Styles */
+        @media (max-width: 768px) {
+            .btn-text {
+                display: none;
+            }
+            
+            .header-btn {
+                padding: 10px;
+            }
+            
+            .logo span {
+                font-size: 1.2rem;
+            }
+            
+            .tool-btn {
+                min-width: 36px;
+                min-height: 36px;
+                padding: 6px 8px;
+                font-size: 0.9rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            header {
+                padding: 10px;
+            }
+            
+            select {
+                min-width: 100px;
+                font-size: 0.85rem;
+            }
+            
+            .logo span {
+                font-size: 1.1rem;
+            }
+        }
+        
+        /* Animation for buttons */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .pulse {
+            animation: pulse 0.3s ease;
+        }
+        
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background-color: #2b8a3e;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            z-index: 2000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header Section -->
+    <header>
+        <div class="logo">
+            <i class="fas fa-code"></i>
+            <span>SKEditor</span>
+        </div>
+        
+        <div class="header-controls">
+            <select id="language-select">
+                <option value="html">HTML</option>
+                <option value="css">CSS</option>
+                <option value="javascript">JavaScript</option>
+                <option value="python">Python</option>
+                <option value="php">PHP</option>
+                <option value="java">Java</option>
+                <option value="c_cpp">C++</option>
+                <option value="xml">XML</option>
+            </select>
+            
+            <button class="header-btn save-btn" id="save-btn">
+                <i class="fas fa-save"></i>
+                <span class="btn-text">Save</span>
+            </button>
+            
+            <button class="header-btn run-btn" id="run-btn">
+                <i class="fas fa-play"></i>
+                <span class="btn-text">Run</span>
+            </button>
+        </div>
+    </header>
+    
+    <!-- Main Editor Area -->
+    <div class="editor-container">
+        <div id="editor"></div>
+    </div>
+    
+    <!-- Bottom Quick Toolbar -->
+    <div class="toolbar">
+        <div class="toolbar-scroll" id="toolbar-scroll">
+            <!-- Toolbar buttons will be generated by JavaScript -->
+        </div>
+    </div>
+    
+    <!-- Preview Overlay -->
+    <div class="overlay" id="preview-overlay">
+        <div class="overlay-header">
+            <div class="overlay-title">Output Preview</div>
+            <button class="close-overlay" id="close-preview">
+                <i class="fas fa-arrow-left"></i> Back to Editor
+            </button>
+        </div>
+        <div class="overlay-content">
+            <iframe id="preview-frame"></iframe>
+            <div class="code-output" id="code-output"></div>
+        </div>
+    </div>
+    
+    <!-- Save File Modal -->
+    <div class="modal" id="save-modal">
+        <div class="modal-content">
+            <div class="modal-title">Save File As</div>
+            <input type="text" class="modal-input" id="filename-input" placeholder="Enter filename (e.g., mycode.html)">
+            <div class="modal-buttons">
+                <button class="modal-btn modal-cancel" id="cancel-save">Cancel</button>
+                <button class="modal-btn modal-confirm" id="confirm-save">Save</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // State management
+        const state = {
+            currentLanguage: 'html',
+            currentCode: '',
+            isPreviewOpen: false
+        };
+        
+        // Language configurations with boilerplate code and runners
+        const languageConfigs = {
+            html: {
+                mode: 'ace/mode/html',
+                boilerplate: `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Hello, World!</h1>
+    <p>This is HTML boilerplate code.</p>
+    <script>
+        console.log('Page loaded successfully!');
+    <\/script>
+</body>
+</html>`,
+                extension: 'html',
+                runner: 'browser'
+            },
+            css: {
+                mode: 'ace/mode/css',
+                boilerplate: `/* CSS Boilerplate */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+    line-height: 1.6;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.header {
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+}
+
+.button {
+    display: inline-block;
+    background-color: #4dabf7;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.button:hover {
+    background-color: #1971c2;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}`,
+                extension: 'css',
+                runner: 'css_preview'
+            },
+            javascript: {
+                mode: 'ace/mode/javascript',
+                boilerplate: `// JavaScript Boilerplate
+function greet(name) {
+    return "Hello, " + name + "!";
+}
+
+function calculateSum(a, b) {
+    return a + b;
+}
+
+// Example usage
+const userName = "Developer";
+console.log(greet(userName));
+
+const num1 = 10;
+const num2 = 25;
+console.log(\`Sum of \${num1} and \${num2} is: \${calculateSum(num1, num2)}\`);
+
+// More examples
+const numbers = [1, 2, 3, 4, 5];
+const doubled = numbers.map(n => n * 2);
+console.log("Doubled numbers:", doubled);`,
+                extension: 'js',
+                runner: 'javascript'
+            },
+            python: {
+                mode: 'ace/mode/python',
+                boilerplate: `# Python Boilerplate
+def greet(name):
+    """Greet a person by name."""
+    return f"Hello, {name}!"
+
+def fibonacci(n):
+    """Generate Fibonacci sequence up to n terms."""
+    sequence = [0, 1]
+    while len(sequence) < n:
+        sequence.append(sequence[-1] + sequence[-2])
+    return sequence[:n]
+
+# Example usage
+if __name__ == "__main__":
+    # Greeting example
+    user = "Developer"
+    print(greet(user))
+    
+    # Fibonacci example
+    terms = 10
+    fib_seq = fibonacci(terms)
+    print(f"First {terms} Fibonacci numbers: {fib_seq}")
+    
+    # List comprehension example
+    squares = [x**2 for x in range(1, 11)]
+    print(f"Squares of 1-10: {squares}")`,
+                extension: 'py',
+                runner: 'python'
+            },
+            php: {
+                mode: 'ace/mode/php',
+                boilerplate: `<?php
+// PHP Boilerplate
+function greet($name) {
+    return "Hello, " . $name . "!";
+}
+
+function calculateSum($a, $b) {
+    return $a + $b;
+}
+
+// Example usage
+$userName = "Developer";
+echo greet($userName) . "\\n";
+
+$num1 = 10;
+$num2 = 25;
+echo "Sum of $num1 and $num2 is: " . calculateSum($num1, $num2) . "\\n";
+
+// Array example
+$fruits = ["Apple", "Banana", "Orange", "Mango"];
+echo "Fruits: " . implode(", ", $fruits) . "\\n";
+
+// Date example
+echo "Current date: " . date("Y-m-d H:i:s") . "\\n";
+
+// Simple HTML output
+echo "<h2>PHP is working!</h2>\\n";
+?>`,
+                extension: 'php',
+                runner: 'php'
+            },
+            java: {
+                mode: 'ace/mode/java',
+                boilerplate: `// Java Boilerplate
+public class Main {
+    
+    public static class Calculator {
+        public int add(int a, int b) {
+            return a + b;
+        }
+        
+        public int multiply(int a, int b) {
+            return a * b;
+        }
+    }
+    
+    public static void greet(String name) {
+        System.out.println("Hello, " + name + "!");
+    }
+    
+    public static int factorial(int n) {
+        if (n <= 1) return 1;
+        return n * factorial(n - 1);
+    }
+    
+    public static void main(String[] args) {
+        System.out.println("Welcome to Java Boilerplate!");
+        
+        // Greeting example
+        greet("Developer");
+        
+        // Calculator example
+        Calculator calc = new Calculator();
+        int result = calc.add(15, 25);
+        System.out.println("15 + 25 = " + result);
+        
+        result = calc.multiply(7, 8);
+        System.out.println("7 * 8 = " + result);
+        
+        // Factorial example
+        int fact = factorial(6);
+        System.out.println("Factorial of 6 is: " + fact);
+        
+        // Array example
+        int[] numbers = {1, 2, 3, 4, 5};
+        System.out.print("Numbers: ");
+        for (int num : numbers) {
+            System.out.print(num + " ");
+        }
+        System.out.println();
+    }
+}`,
+                extension: 'java',
+                runner: 'java'
+            },
+            c_cpp: {
+                mode: 'ace/mode/c_cpp',
+                boilerplate: `// C++ Boilerplate
+#include <iostream>
+#include <vector>
+using namespace std;
+
+class Calculator {
+public:
+    int add(int a, int b) {
+        return a + b;
+    }
+    
+    int multiply(int a, int b) {
+        return a * b;
+    }
+};
+
+int factorial(int n) {
+    if (n <= 1) return 1;
+    return n * factorial(n - 1);
+}
+
+int main() {
+    cout << "Welcome to C++ Boilerplate!" << endl;
+    
+    Calculator calc;
+    int result = calc.add(10, 20);
+    cout << "10 + 20 = " << result << endl;
+    
+    result = calc.multiply(5, 6);
+    cout << "5 * 6 = " << result << endl;
+    
+    int fact = factorial(5);
+    cout << "Factorial of 5 is: " << fact << endl;
+    
+    // Vector example
+    vector<int> numbers = {1, 2, 3, 4, 5};
+    cout << "Numbers: ";
+    for (int num : numbers) {
+        cout << num << " ";
+    }
+    cout << endl;
+    
+    return 0;
+}`,
+                extension: 'cpp',
+                runner: 'cpp'
+            },
+            xml: {
+                mode: 'ace/mode/xml',
+                boilerplate: `<?xml version="1.0" encoding="UTF-8"?>
+<note>
+    <to>User</to>
+    <from>SKEditor</from>
+    <heading>Reminder</heading>
+    <body>This is an XML example!</body>
+</note>`,
+                extension: 'xml',
+                runner: 'xml'
+            }
+        };
+        
+        // Toolbar button configurations
+        const toolbarButtons = [
+            'Func', 'Tab', '<', '>', '{', '}', '[', ']', '(', ')',
+            ';', ':', '"', "'", '=', '+', '-', '*', '/', '\\',
+            '$', '#', '@', '!', '?', '&', '|', '~', '`', '^',
+            '%', '.', ',', '_', '=>', '<=', '>=', '==', '!='
+        ];
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Ace Editor
+            const editor = ace.edit("editor");
+            editor.setTheme("ace/theme/monokai");
+            editor.session.setMode(languageConfigs.html.mode);
+            editor.setFontSize(16);
+            editor.session.setUseWrapMode(true);
+            editor.setValue(languageConfigs.html.boilerplate);
+            editor.clearSelection();
+            
+            // Update state with current code
+            state.currentCode = editor.getValue();
+            
+            // Handle editor changes
+            editor.session.on('change', function() {
+                state.currentCode = editor.getValue();
+            });
+            
+            // Initialize toolbar
+            initToolbar();
+            
+            // Set up event listeners
+            setupEventListeners(editor);
+        });
+        
+        // Initialize toolbar buttons
+        function initToolbar() {
+            const toolbarScroll = document.getElementById('toolbar-scroll');
+            
+            toolbarButtons.forEach(btnText => {
+                const button = document.createElement('button');
+                button.className = 'tool-btn';
+                button.textContent = btnText;
+                button.addEventListener('click', function() {
+                    insertTextAtCursor(btnText);
+                    this.classList.add('pulse');
+                    setTimeout(() => this.classList.remove('pulse'), 300);
+                });
+                toolbarScroll.appendChild(button);
+            });
+        }
+        
+        // Insert text at cursor position in editor
+        function insertTextAtCursor(text) {
+            const editor = ace.edit("editor");
+            const session = editor.session;
+            const cursor = editor.getCursorPosition();
+            
+            // Special handling for certain buttons
+            let insertText = text;
+            
+            if (text === 'Tab') {
+                insertText = '    '; // 4 spaces for indentation
+            } else if (text === 'Func') {
+                insertText = 'function myFunction() {\n    \n}';
+                // Position cursor inside function
+                setTimeout(() => {
+                    const newCursor = {
+                        row: cursor.row + 1,
+                        column: 4
+                    };
+                    editor.moveCursorTo(newCursor.row, newCursor.column);
+                    editor.focus();
+                }, 10);
+            } else if (text === '=>') {
+                insertText = ' => ';
+            } else if (text === '==') {
+                insertText = ' == ';
+            } else if (text === '!=') {
+                insertText = ' != ';
+            } else if (text === '<=') {
+                insertText = ' <= ';
+            } else if (text === '>=') {
+                insertText = ' >= ';
+            } else if (['{', '(', '[', '<'].includes(text)) {
+                // For opening brackets, check if we should auto-close
+                const closingMap = {
+                    '{': '}',
+                    '(': ')',
+                    '[': ']',
+                    '<': '>'
+                };
+                
+                const line = session.getLine(cursor.row);
+                const afterCursor = line.substring(cursor.column);
+                
+                // Only auto-close if we're not already at a closing bracket
+                if (!afterCursor.trim().startsWith(closingMap[text])) {
+                    insertText = text + closingMap[text];
+                    // Move cursor between the brackets
+                    setTimeout(() => {
+                        editor.moveCursorTo(cursor.row, cursor.column + 1);
+                        editor.focus();
+                    }, 10);
+                }
+            }
+            
+            session.insert(cursor, insertText);
+            editor.focus();
+        }
+        
+        // Set up event listeners
+        function setupEventListeners(editor) {
+            // Language dropdown
+            document.getElementById('language-select').addEventListener('change', function() {
+                const newLang = this.value;
+                state.currentLanguage = newLang;
+                
+                // Update editor mode
+                editor.session.setMode(languageConfigs[newLang].mode);
+                
+                // Replace with boilerplate code for the new language
+                editor.setValue(languageConfigs[newLang].boilerplate);
+                editor.clearSelection();
+                state.currentCode = editor.getValue();
+                
+                showToast(`Language changed to ${this.options[this.selectedIndex].text}`);
+            });
+            
+            // Open button - ফোন থেকে ফাইল ওপেন করবে
+            document.getElementById('open-btn').addEventListener('click', function() {
+                openFileFromPhone(editor);
+            });
+            
+            // Save button - মডাল ওপেন করবে
+            document.getElementById('save-btn').addEventListener('click', function() {
+                openSaveModal();
+            });
+            
+            // Run button
+            document.getElementById('run-btn').addEventListener('click', function() {
+                runCode(editor);
+            });
+            
+            // Close preview button
+            document.getElementById('close-preview').addEventListener('click', function() {
+                closePreview();
+            });
+            
+            // Save modal buttons
+            document.getElementById('cancel-save').addEventListener('click', function() {
+                closeSaveModal();
+            });
+            
+            document.getElementById('confirm-save').addEventListener('click', function() {
+                saveCodeToFile(editor);
+            });
+            
+            // Enter key in filename input
+            document.getElementById('filename-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    saveCodeToFile(editor);
+                }
+            });
+        }
+        
+        // Open file from phone
+        function openFileFromPhone(editor) {
+            // Create file input element
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.html,.css,.js,.py,.php,.java,.cpp,.xml,.txt';
+            
+            fileInput.onchange = function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const content = e.target.result;
+                    
+                    // Detect language from file extension
+                    const fileName = file.name;
+                    const fileExt = fileName.split('.').pop().toLowerCase();
+                    let detectedLang = 'html';
+                    
+                    // Map file extensions to languages
+                    const extensionMap = {
+                        'html': 'html',
+                        'htm': 'html',
+                        'css': 'css',
+                        'js': 'javascript',
+                        'py': 'python',
+                        'php': 'php',
+                        'java': 'java',
+                        'cpp': 'c_cpp',
+                        'c': 'c_cpp',
+                        'xml': 'xml',
+                        'txt': 'html'
+                    };
+                    
+                    if (extensionMap[fileExt]) {
+                        detectedLang = extensionMap[fileExt];
+                    }
+                    
+                    // Set language
+                    document.getElementById('language-select').value = detectedLang;
+                    state.currentLanguage = detectedLang;
+                    editor.session.setMode(languageConfigs[detectedLang].mode);
+                    
+                    // Set code
+                    editor.setValue(content);
+                    editor.clearSelection();
+                    state.currentCode = content;
+                    
+                    showToast(`Opened: ${fileName} (${detectedLang.toUpperCase()})`);
+                };
+                
+                reader.readAsText(file);
+            };
+            
+            fileInput.click();
+        }
+        
+        // Open save modal
+        function openSaveModal() {
+            const modal = document.getElementById('save-modal');
+            const input = document.getElementById('filename-input');
+            
+            // Set default filename based on language
+            const lang = state.currentLanguage;
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+            const defaultName = `code_${lang}_${timestamp}.${languageConfigs[lang].extension}`;
+            
+            input.value = defaultName;
+            input.focus();
+            input.select();
+            
+            modal.classList.add('active');
+        }
+        
+        // Close save modal
+        function closeSaveModal() {
+            document.getElementById('save-modal').classList.remove('active');
+        }
+        
+        // Save code as file (ইউজার দেওয়া নামে)
+        function saveCodeToFile(editor) {
+            const code = editor.getValue();
+            const language = state.currentLanguage;
+            const filenameInput = document.getElementById('filename-input');
+            let filename = filenameInput.value.trim();
+            
+            // Validate filename
+            if (!filename) {
+                showToast('Please enter a filename');
+                filenameInput.focus();
+                return;
+            }
+            
+            // Ensure filename has extension
+            const extension = languageConfigs[language].extension;
+            if (!filename.includes('.')) {
+                filename = filename + '.' + extension;
+            }
+            
+            // Create blob and download link
+            const blob = new Blob([code], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            
+            // Cleanup
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+            
+            // Close modal
+            closeSaveModal();
+            
+            showToast(`File saved as ${filename}`);
+        }
+        
+        // Run code and show preview
+        function runCode(editor) {
+            const code = editor.getValue();
+            const language = state.currentLanguage;
+            const config = languageConfigs[language];
+            
+            // Open preview overlay
+            openPreview();
+            
+            // HTML Runner
+            if (config.runner === 'browser') {
+                const iframe = document.getElementById('preview-frame');
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                
+                iframeDoc.open();
+                iframeDoc.write(code);
+                iframeDoc.close();
+                
+                document.getElementById('preview-frame').style.display = 'block';
+                document.getElementById('code-output').style.display = 'none';
+                showToast('HTML output rendered');
+                
+            } 
+            // CSS Runner
+            else if (config.runner === 'css_preview') {
+                const iframe = document.getElementById('preview-frame');
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                
+                const htmlWithCSS = `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <style>${code}</style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <div class="header">
+                                <h1>CSS Preview</h1>
+                                <p>Your CSS styles are applied to this page</p>
+                            </div>
+                            <div style="padding: 20px;">
+                                <h2>Sample Elements</h2>
+                                <button class="button">Styled Button</button>
+                                <p>This is a paragraph with your CSS styles applied.</p>
+                                <div style="background: #eee; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                                    A styled div element
+                                </div>
+                                <h3>Form Elements</h3>
+                                <input type="text" placeholder="Text input" style="padding: 10px; margin: 5px;">
+                                <select style="padding: 10px; margin: 5px;">
+                                    <option>Option 1</option>
+                                    <option>Option 2</option>
+                                </select>
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                `;
+                
+                iframeDoc.open();
+                iframeDoc.write(htmlWithCSS);
+                iframeDoc.close();
+                
+                document.getElementById('preview-frame').style.display = 'block';
+                document.getElementById('code-output').style.display = 'none';
+                showToast('CSS applied to preview page');
+                
+            } 
+            // JavaScript Runner
+            else if (config.runner === 'javascript') {
+                try {
+                    const outputDiv = document.getElementById('code-output');
+                    let consoleOutput = [];
+                    
+                    // Override console.log to capture output
+                    const originalLog = console.log;
+                    console.log = function(...args) {
+                        consoleOutput.push(args.join(' '));
+                        originalLog.apply(console, args);
+                    };
+                    
+                    // Execute the code
+                    eval(code);
+                    
+                    // Restore console.log
+                    console.log = originalLog;
+                    
+                    // Display output
+                    outputDiv.innerHTML = `<pre><strong>JavaScript Output:</strong>\n\n${consoleOutput.join('\n') || 'No output (check console for errors)'}</pre>`;
+                    document.getElementById('preview-frame').style.display = 'none';
+                    document.getElementById('code-output').style.display = 'block';
+                    showToast('JavaScript executed successfully');
+                    
+                } catch (error) {
+                    document.getElementById('code-output').innerHTML = `<pre style="color: red;"><strong>JavaScript Error:</strong>\n\n${error.toString()}</pre>`;
+                    document.getElementById('preview-frame').style.display = 'none';
+                    document.getElementById('code-output').style.display = 'block';
+                    showToast('JavaScript execution error');
+                }
+                
+            } 
+            // Python Runner (using Skulpt or similar approach)
+            else if (config.runner === 'python') {
+                // Simple Python interpreter simulation
+                try {
+                    // Clean Python code for display
+                    const cleanCode = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    
+                    // Simulate Python execution (simplified)
+                    let output = `# Python Code Execution Simulation\n\n`;
+                    output += `Code cannot be executed directly in browser.\n`;
+                    output += `To run Python code:\n`;
+                    output += `1. Save the file (e.g., script.py)\n`;
+                    output += `2. Run on your computer: python script.py\n\n`;
+                    output += `Your Python code:\n\n${cleanCode}`;
+                    
+                    document.getElementById('code-output').innerHTML = `<pre>${output}</pre>`;
+                    document.getElementById('preview-frame').style.display = 'none';
+                    document.getElementById('code-output').style.display = 'block';
+                    showToast('Python code displayed (requires local execution)');
+                    
+                } catch (error) {
+                    document.getElementById('code-output').innerHTML = `<pre style="color: red;">Error: ${error.toString()}</pre>`;
+                    document.getElementById('preview-frame').style.display = 'none';
+                    document.getElementById('code-output').style.display = 'block';
+                }
+                
+            } 
+            // PHP Runner
+            else if (config.runner === 'php') {
+                // Clean PHP code for display
+                const cleanCode = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                
+                let output = `# PHP Code Execution Simulation\n\n`;
+                output += `PHP requires a server to execute.\n`;
+                output += `To run PHP code:\n`;
+                output += `1. Save the file (e.g., script.php)\n`;
+                output += `2. Run on a PHP server (XAMPP, WAMP, etc.)\n`;
+                output += `3. Access via: http://localhost/script.php\n\n`;
+                output += `Your PHP code:\n\n${cleanCode}`;
+                
+                document.getElementById('code-output').innerHTML = `<pre>${output}</pre>`;
+                document.getElementById('preview-frame').style.display = 'none';
+                document.getElementById('code-output').style.display = 'block';
+                showToast('PHP code displayed (requires server execution)');
+                
+            } 
+            // Java Runner
+            else if (config.runner === 'java') {
+                // Clean Java code for display
+                const cleanCode = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                
+                let output = `# Java Code Execution Simulation\n\n`;
+                output += `Java requires compilation and JVM.\n`;
+                output += `To run Java code:\n`;
+                output += `1. Save the file as Main.java\n`;
+                output += `2. Compile: javac Main.java\n`;
+                output += `3. Run: java Main\n\n`;
+                output += `Your Java code:\n\n${cleanCode}`;
+                
+                document.getElementById('code-output').innerHTML = `<pre>${output}</pre>`;
+                document.getElementById('preview-frame').style.display = 'none';
+                document.getElementById('code-output').style.display = 'block';
+                showToast('Java code displayed (requires compilation)');
+                
+            } 
+            // C++ Runner
+            else if (config.runner === 'cpp') {
+                // Clean C++ code for display
+                const cleanCode = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                
+                let output = `# C++ Code Execution Simulation\n\n`;
+                output += `C++ requires compilation.\n`;
+                output += `To run C++ code:\n`;
+                output += `1. Save the file (e.g., program.cpp)\n`;
+                output += `2. Compile: g++ program.cpp -o program\n`;
+                output += `3. Run: ./program (Linux/Mac) or program.exe (Windows)\n\n`;
+                output += `Your C++ code:\n\n${cleanCode}`;
+                
+                document.getElementById('code-output').innerHTML = `<pre>${output}</pre>`;
+                document.getElementById('preview-frame').style.display = 'none';
+                document.getElementById('code-output').style.display = 'block';
+                showToast('C++ code displayed (requires compilation)');
+                
+            } 
+            // XML Runner
+            else if (config.runner === 'xml') {
+                // Display XML with syntax highlighting
+                const cleanCode = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                
+                document.getElementById('code-output').innerHTML = `<pre><strong>XML Document:</strong>\n\n${cleanCode}</pre>`;
+                document.getElementById('preview-frame').style.display = 'none';
+                document.getElementById('code-output').style.display = 'block';
+                showToast('XML document displayed');
+                
+            } 
+            // Default runner for other languages
+            else {
+                const codeOutput = document.getElementById('code-output');
+                const cleanCode = escapeHtml(code);
+                
+                codeOutput.innerHTML = `
+                    <pre><strong>${language.toUpperCase()} Code Preview:</strong>\n\n${cleanCode}</pre>
+                    <p style="color: #666; margin-top: 20px;">
+                        <i class="fas fa-info-circle"></i> 
+                        This language cannot be executed in the browser. 
+                        Save the file and run it on your local machine or server.
+                    </p>
+                `;
+                
+                document.getElementById('preview-frame').style.display = 'none';
+                document.getElementById('code-output').style.display = 'block';
+                showToast(`${language.toUpperCase()} code displayed`);
+            }
+        }
+        
+        // Escape HTML for safe display
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Open preview overlay
+        function openPreview() {
+            state.isPreviewOpen = true;
+            document.getElementById('preview-overlay').classList.add('active');
+        }
+        
+        // Close preview overlay
+        function closePreview() {
+            state.isPreviewOpen = false;
+            document.getElementById('preview-overlay').classList.remove('active');
+        }
+        
+        // Show toast notification
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
